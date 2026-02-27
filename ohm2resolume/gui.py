@@ -162,6 +162,8 @@ class Gui:
         )
         self._trigger_cb.pack(side=tk.LEFT)
 
+        tk.Button(bar, text="?", command=self._on_setup_help, width=2, **btn_style).pack(side=tk.RIGHT)
+
     # --- Actions ---------------------------------------------------------
 
     def _on_refresh(self) -> None:
@@ -169,6 +171,59 @@ class Gui:
 
     def _on_trigger_toggle(self) -> None:
         self.app.enable_clip_trigger = self._trigger_var.get()
+
+    def _on_setup_help(self) -> None:
+        """Show a Getting Started dialog."""
+        dlg = tk.Toplevel(self.root)
+        dlg.title("Getting Started")
+        dlg.configure(bg="#222222")
+        dlg.resizable(False, False)
+        dlg.transient(self.root)
+        dlg.grab_set()
+
+        cfg = self.app.cfg
+        vport = cfg["midi"]["virtual_port_name"]
+        osc_send = cfg["osc"]["send_port"]
+        osc_listen = cfg["osc"]["listen_port"]
+
+        steps = (
+            "1. Connect your OHM64 via USB\n"
+            "   The MIDI status dot turns green when detected.\n"
+            "\n"
+            f"2. Install loopMIDI and create a port named \"{vport}\"\n"
+            "   This lets faders/knobs pass through to Resolume.\n"
+            "   The Bridge status dot turns green when found.\n"
+            "   (macOS: the virtual port is created automatically)\n"
+            "\n"
+            "3. Configure Resolume OSC settings:\n"
+            f"   - OSC Input enabled on port {osc_send}\n"
+            f"   - OSC Output to 127.0.0.1:{osc_listen}\n"
+            "   The OSC status dot turns green when Resolume responds.\n"
+            "\n"
+            f"4. In Resolume, set MIDI input to \"{vport}\"\n"
+            "   This receives fader/knob data from the bridge.\n"
+            "\n"
+            "5. Click Refresh to re-sync clip states at any time.\n"
+            "\n"
+            "Grid buttons trigger clips in Resolume layers 1-9.\n"
+            "LEDs reflect clip state: off=empty, dim=loaded, blink=playing."
+        )
+
+        tk.Label(
+            dlg, text="OHM2Resolume Bridge Setup", fg="#ffffff", bg="#222222",
+            font=("Helvetica", 12, "bold"),
+        ).pack(padx=20, pady=(16, 8))
+
+        tk.Label(
+            dlg, text=steps, fg="#cccccc", bg="#222222",
+            font=("Consolas", 10), justify=tk.LEFT, anchor=tk.W,
+        ).pack(padx=20, pady=(0, 12))
+
+        tk.Button(
+            dlg, text="OK", command=dlg.destroy, width=10,
+            bg="#444444", fg="#dddddd", activebackground="#555555",
+            activeforeground="#ffffff", relief=tk.FLAT,
+        ).pack(pady=(0, 16))
 
     # --- Polling ---------------------------------------------------------
 
