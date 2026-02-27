@@ -2,6 +2,7 @@
 
 import logging
 import re
+import sys
 from typing import Callable
 
 import mido
@@ -99,23 +100,41 @@ class MidiController:
         return True
 
     def connect_virtual(self) -> bool:
-        """Open the loopMIDI virtual port for MIDI passthrough. Returns True on success."""
+        """Open virtual MIDI port for passthrough.
+
+        macOS: creates a native virtual port via CoreMIDI (no extra software needed).
+        Windows: opens an existing loopMIDI port by name.
+        """
         self.disconnect_virtual()
-        vport = self.find_virtual_port()
-        if not vport:
-            log.warning(
-                "Virtual MIDI port '%s' not found — "
-                "install loopMIDI and create a port named '%s'",
-                self.virtual_port_name, self.virtual_port_name,
-            )
-            return False
-        try:
-            self._virtual_output = mido.open_output(vport)
-            log.info("Opened virtual MIDI output: %s", vport)
-            return True
-        except Exception:
-            log.exception("Failed to open virtual MIDI output: %s", vport)
-            return False
+
+        if sys.platform == "darwin":
+            # macOS — create a virtual port natively
+            try:
+                self._virtual_output = mido.open_output(
+                    self.virtual_port_name, virtual=True,
+                )
+                log.info("Created virtual MIDI port: %s", self.virtual_port_name)
+                return True
+            except Exception:
+                log.exception("Failed to create virtual MIDI port: %s", self.virtual_port_name)
+                return False
+        else:
+            # Windows — find an existing loopMIDI port
+            vport = self.find_virtual_port()
+            if not vport:
+                log.warning(
+                    "Virtual MIDI port '%s' not found — "
+                    "install loopMIDI and create a port named '%s'",
+                    self.virtual_port_name, self.virtual_port_name,
+                )
+                return False
+            try:
+                self._virtual_output = mido.open_output(vport)
+                log.info("Opened virtual MIDI output: %s", vport)
+                return True
+            except Exception:
+                log.exception("Failed to open virtual MIDI output: %s", vport)
+                return False
 
     def disconnect(self) -> None:
         """Close all MIDI ports."""

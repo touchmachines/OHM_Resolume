@@ -1,5 +1,6 @@
 """Tkinter GUI — status dashboard with 8x8 grid mirror."""
 
+import sys
 import tkinter as tk
 from tkinter import ttk
 
@@ -149,7 +150,10 @@ class Gui:
         else:
             self._virt_dot.itemconfig(self._virt_oval, fill="#cc3333")
             vname = self.app.midi.virtual_port_name
-            self._virt_label.configure(text=f"Create '{vname}' in loopMIDI")
+            if sys.platform == "darwin":
+                self._virt_label.configure(text=f"'{vname}' failed")
+            else:
+                self._virt_label.configure(text=f"Create '{vname}' in loopMIDI")
 
         # Update OSC status
         if self.app.osc.connected:
