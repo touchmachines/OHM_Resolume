@@ -48,6 +48,15 @@ class Gui:
         self._midi_label = tk.Label(bar, text="Searching...", fg="#aaaaaa", bg="#222222", font=("Helvetica", 10))
         self._midi_label.pack(side=tk.LEFT, padx=(0, 16))
 
+        # Virtual MIDI status
+        tk.Label(bar, text="Bridge:", fg="#aaaaaa", bg="#222222", font=("Helvetica", 10)).pack(side=tk.LEFT)
+        self._virt_dot = tk.Canvas(bar, width=12, height=12, bg="#222222", highlightthickness=0)
+        self._virt_dot.pack(side=tk.LEFT, padx=(2, 4))
+        self._virt_oval = self._virt_dot.create_oval(2, 2, 10, 10, fill="#cc3333")
+
+        self._virt_label = tk.Label(bar, text="Searching...", fg="#aaaaaa", bg="#222222", font=("Helvetica", 10))
+        self._virt_label.pack(side=tk.LEFT, padx=(0, 16))
+
         # OSC status
         tk.Label(bar, text="OSC:", fg="#aaaaaa", bg="#222222", font=("Helvetica", 10)).pack(side=tk.LEFT)
         self._osc_dot = tk.Canvas(bar, width=12, height=12, bg="#222222", highlightthickness=0)
@@ -132,6 +141,15 @@ class Gui:
         else:
             self._midi_dot.itemconfig(self._midi_oval, fill="#cc3333")
             self._midi_label.configure(text="Searching for OHM64...")
+
+        # Update virtual MIDI port status
+        if self.app.midi.virtual_connected:
+            self._virt_dot.itemconfig(self._virt_oval, fill="#33cc33")
+            self._virt_label.configure(text=self.app.midi.virtual_port_name_actual or "Connected")
+        else:
+            self._virt_dot.itemconfig(self._virt_oval, fill="#cc3333")
+            vname = self.app.midi.virtual_port_name
+            self._virt_label.configure(text=f"Create '{vname}' in loopMIDI")
 
         # Update OSC status
         if self.app.osc.connected:

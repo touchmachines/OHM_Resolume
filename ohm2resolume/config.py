@@ -12,6 +12,7 @@ DEFAULTS = {
     },
     "midi": {
         "device_name_pattern": "Ohm64",
+        "virtual_port_name": "OHM Bridge",
         "channel": 0,
     },
     "led": {

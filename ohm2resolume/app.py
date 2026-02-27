@@ -21,6 +21,7 @@ class App:
 
         self.midi = MidiController(
             device_name_pattern=self.cfg["midi"]["device_name_pattern"],
+            virtual_port_name=self.cfg["midi"]["virtual_port_name"],
             channel=self.cfg["midi"]["channel"],
             on_button_press=self._on_button_press,
         )
@@ -66,6 +67,11 @@ class App:
             self.midi.connect()
             if self.midi.connected:
                 log.info("MIDI reconnected to %s", self.midi.port_name)
+
+        if not self.midi.virtual_connected:
+            self.midi.connect_virtual()
+            if self.midi.virtual_connected:
+                log.info("Virtual MIDI reconnected to %s", self.midi.virtual_port_name_actual)
 
         self.osc.query_all()
 

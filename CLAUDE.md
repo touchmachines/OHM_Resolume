@@ -32,8 +32,16 @@ Resolume ──OSC:7001──→ OscBridge ──→ ClipStateModel ──→ Mi
                                           ↓
                                      GUI grid repaint
 
-OHM64 buttons ──MIDI──→ MidiController ──→ OscBridge ──OSC:7000──→ Resolume
+OHM64 (all MIDI) ──→ MidiController
+  ├─ Grid buttons (notes 0-63) ──→ OscBridge ──OSC:7000──→ Resolume (clip trigger)
+  └─ Everything else (faders/knobs/CCs) ──→ loopMIDI "OHM Bridge" ──→ Resolume (MIDI mapping)
 ```
+
+### MIDI Proxy (loopMIDI)
+
+Windows MIDI ports are exclusive — only one app can open a port. The app acts as a MIDI proxy: it reads all input from the OHM64, intercepts grid button presses (notes 0-63) for OSC clip triggering, and forwards everything else (faders, knobs, CCs) to a loopMIDI virtual port named "OHM Bridge". Resolume reads from "OHM Bridge" for standard MIDI mapping.
+
+**User setup**: Install loopMIDI, create a port named "OHM Bridge", set Resolume's MIDI input to "OHM Bridge".
 
 ## Key Mappings
 
