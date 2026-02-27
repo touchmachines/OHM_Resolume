@@ -74,6 +74,13 @@ class Gui:
         self._cells: list[list[tk.Canvas]] = []
         cell_size = 40
         for row in range(GRID_SIZE):
+            # Layer label: row 0 = Layer 8 (top), row 7 = Layer 1 (bottom)
+            layer_num = GRID_SIZE - row
+            tk.Label(
+                frame, text=f"Layer {layer_num}", fg="#777777", bg="#222222",
+                font=("Helvetica", 9), anchor=tk.E,
+            ).grid(row=row, column=0, padx=(0, 6), pady=1, sticky=tk.E)
+
             row_cells = []
             for col in range(GRID_SIZE):
                 c = tk.Canvas(
@@ -84,7 +91,7 @@ class Gui:
                     highlightbackground="#444444",
                     highlightthickness=1,
                 )
-                c.grid(row=row, column=col, padx=1, pady=1)
+                c.grid(row=row, column=col + 1, padx=1, pady=1)
                 row_cells.append(c)
             self._cells.append(row_cells)
 
