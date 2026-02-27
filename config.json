@@ -1,0 +1,21 @@
+{
+    "osc": {
+        "listen_port": 7001,
+        "send_port": 7000,
+        "send_host": "127.0.0.1"
+    },
+    "midi": {
+        "device_name_pattern": "Ohm64",
+        "channel": 0
+    },
+    "led": {
+        "empty": 0,
+        "loaded": 4,
+        "previewed": 64,
+        "playing": 127
+    },
+    "app": {
+        "poll_interval_ms": 50,
+        "enable_clip_trigger": true
+    }
+}
