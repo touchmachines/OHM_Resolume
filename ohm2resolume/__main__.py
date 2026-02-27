@@ -3,9 +3,14 @@
 import logging
 import sys
 
-from .app import App
-from .config import load_config
-from .gui import Gui
+try:
+    from .app import App
+    from .config import load_config
+    from .gui import Gui
+except ImportError:
+    from ohm2resolume.app import App
+    from ohm2resolume.config import load_config
+    from ohm2resolume.gui import Gui
 
 
 def main() -> None:
