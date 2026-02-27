@@ -1,11 +1,11 @@
-"""Tkinter GUI — status dashboard with 8x8 grid mirror."""
+"""Tkinter GUI — status dashboard with 9x8 grid mirror (8 layers + Layer 9)."""
 
 import sys
 import tkinter as tk
 from tkinter import ttk
 
 from .app import App
-from .mapping import GRID_SIZE
+from .mapping import GRID_SIZE, NUM_ROWS
 
 # Colors for clip states
 STATE_COLORS = {
@@ -68,23 +68,40 @@ class Gui:
         self._osc_label.pack(side=tk.LEFT)
 
     def _build_grid(self) -> None:
-        frame = tk.Frame(self.root, bg="#222222")
-        frame.pack(padx=10, pady=10)
+        # Outer frame holds the main grid and the Layer 9 wings
+        outer = tk.Frame(self.root, bg="#222222")
+        outer.pack(padx=10, pady=10)
 
-        self._cells: list[list[tk.Canvas]] = []
         cell_size = 40
+        self._cells: list[list[tk.Canvas]] = []
+
+        # --- Left Layer 9 group (4 buttons) ---
+        left9 = tk.Frame(outer, bg="#222222")
+        left9.pack(side=tk.LEFT, anchor=tk.S, padx=(0, 6))
+        tk.Label(
+            left9, text="Layer 9", fg="#777777", bg="#222222",
+            font=("Helvetica", 9),
+        ).pack(pady=(0, 2))
+        left9_grid = tk.Frame(left9, bg="#222222")
+        left9_grid.pack()
+
+        # --- Main 8x8 grid (center) ---
+        center = tk.Frame(outer, bg="#222222")
+        center.pack(side=tk.LEFT, pady=(0, 44))
+        main_grid = tk.Frame(center, bg="#222222")
+        main_grid.pack()
+
         for row in range(GRID_SIZE):
-            # Layer label: row 0 = Layer 8 (top), row 7 = Layer 1 (bottom)
             layer_num = GRID_SIZE - row
             tk.Label(
-                frame, text=f"Layer {layer_num}", fg="#777777", bg="#222222",
+                main_grid, text=f"Layer {layer_num}", fg="#777777", bg="#222222",
                 font=("Helvetica", 9), anchor=tk.E,
             ).grid(row=row, column=0, padx=(0, 6), pady=1, sticky=tk.E)
 
             row_cells = []
             for col in range(GRID_SIZE):
                 c = tk.Canvas(
-                    frame,
+                    main_grid,
                     width=cell_size,
                     height=cell_size,
                     bg=STATE_COLORS[0],
@@ -94,6 +111,33 @@ class Gui:
                 c.grid(row=row, column=col + 1, padx=1, pady=1)
                 row_cells.append(c)
             self._cells.append(row_cells)
+
+        # --- Right Layer 9 group (4 buttons) ---
+        right9 = tk.Frame(outer, bg="#222222")
+        right9.pack(side=tk.LEFT, anchor=tk.S, padx=(6, 0), pady=(0, 0))
+        tk.Label(
+            right9, text="Layer 9", fg="#777777", bg="#222222",
+            font=("Helvetica", 9),
+        ).pack(pady=(0, 2))
+        right9_grid = tk.Frame(right9, bg="#222222")
+        right9_grid.pack()
+
+        # Build Layer 9 cells: left 4 in left9_grid, right 4 in right9_grid
+        layer9_cells = []
+        for col in range(GRID_SIZE):
+            parent = left9_grid if col < 4 else right9_grid
+            grid_col = col if col < 4 else col - 4
+            c = tk.Canvas(
+                parent,
+                width=cell_size,
+                height=cell_size,
+                bg=STATE_COLORS[0],
+                highlightbackground="#444444",
+                highlightthickness=1,
+            )
+            c.grid(row=0, column=grid_col, padx=1, pady=1)
+            layer9_cells.append(c)
+        self._cells.append(layer9_cells)
 
     def _build_controls(self) -> None:
         bar = tk.Frame(self.root, bg="#222222")
@@ -137,7 +181,7 @@ class Gui:
         if self.app.clip_state.is_dirty():
             snap = self.app.clip_state.snapshot()
             self.app.clip_state.clear_dirty()
-            for row in range(GRID_SIZE):
+            for row in range(NUM_ROWS):
                 for col in range(GRID_SIZE):
                     color = STATE_COLORS.get(snap[row][col], STATE_COLORS[0])
                     self._cells[row][col].configure(bg=color)

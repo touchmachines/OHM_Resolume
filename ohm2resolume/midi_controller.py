@@ -7,7 +7,7 @@ from typing import Callable
 
 import mido
 
-from .mapping import GRID_SIZE, grid_to_note, note_to_grid
+from .mapping import GRID_SIZE, LAYER9_NOTES, NUM_ROWS, grid_to_note, note_to_grid
 
 log = logging.getLogger(__name__)
 
@@ -164,8 +164,8 @@ class MidiController:
             log.exception("Failed to send LED update note=%d vel=%d", note, velocity)
 
     def all_leds_off(self) -> None:
-        """Turn off all 64 LEDs."""
-        for row in range(GRID_SIZE):
+        """Turn off all LEDs (8x8 grid + Layer 9)."""
+        for row in range(NUM_ROWS):
             for col in range(GRID_SIZE):
                 self.set_led(row, col, 0)
 
@@ -173,14 +173,16 @@ class MidiController:
         """Update all LEDs from a state grid snapshot using the velocity map."""
         from .mapping import resolume_state_to_velocity
 
-        for row in range(GRID_SIZE):
+        for row in range(NUM_ROWS):
             for col in range(GRID_SIZE):
                 vel = resolume_state_to_velocity(grid[row][col], led_map)
                 self.set_led(row, col, vel)
 
     def _is_grid_note(self, msg: mido.Message) -> bool:
-        """Check if message is a note event for the 8x8 grid (notes 0-63)."""
-        return msg.type in ("note_on", "note_off") and 0 <= msg.note < self._GRID_NOTE_MAX
+        """Check if message is a note event for the grid (notes 0-63 + Layer 9)."""
+        if msg.type not in ("note_on", "note_off"):
+            return False
+        return 0 <= msg.note < self._GRID_NOTE_MAX or msg.note in LAYER9_NOTES
 
     def _forward_to_virtual(self, msg: mido.Message) -> None:
         """Forward a MIDI message to the virtual output port."""
@@ -201,7 +203,7 @@ class MidiController:
             # Grid button — handle internally, don't forward
             if msg.type == "note_on" and msg.velocity > 0:
                 row, col = note_to_grid(msg.note)
-                if 0 <= row < GRID_SIZE and 0 <= col < GRID_SIZE:
+                if 0 <= row < NUM_ROWS and 0 <= col < GRID_SIZE:
                     log.debug("Button press: row=%d col=%d note=%d", row, col, msg.note)
                     if self.on_button_press:
                         self.on_button_press(row, col)

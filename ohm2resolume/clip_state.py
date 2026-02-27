@@ -1,12 +1,12 @@
-"""Thread-safe 8x8 clip state model."""
+"""Thread-safe clip state model (9 rows x 8 cols: 8x8 grid + Layer 9)."""
 
 import threading
 
-from .mapping import GRID_SIZE
+from .mapping import GRID_SIZE, NUM_ROWS
 
 
 class ClipStateModel:
-    """Holds the current Resolume clip connected-state for an 8x8 grid.
+    """Holds the current Resolume clip connected-state for a 9x8 grid.
 
     All methods are thread-safe. The dirty flag lets the GUI know when
     to repaint without constant polling of every cell.
@@ -14,7 +14,7 @@ class ClipStateModel:
 
     def __init__(self):
         self._lock = threading.Lock()
-        self._grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
+        self._grid = [[0] * GRID_SIZE for _ in range(NUM_ROWS)]
         self._dirty = False
 
     def set(self, row: int, col: int, state: int) -> None:
@@ -44,5 +44,5 @@ class ClipStateModel:
     def reset(self) -> None:
         """Clear all states to 0."""
         with self._lock:
-            self._grid = [[0] * GRID_SIZE for _ in range(GRID_SIZE)]
+            self._grid = [[0] * GRID_SIZE for _ in range(NUM_ROWS)]
             self._dirty = True

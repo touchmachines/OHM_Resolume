@@ -11,6 +11,7 @@ from pythonosc.udp_client import SimpleUDPClient
 from .clip_state import ClipStateModel
 from .mapping import (
     GRID_SIZE,
+    NUM_ROWS,
     grid_to_osc_path,
     grid_to_trigger_path,
     osc_path_to_grid,
@@ -56,8 +57,8 @@ class OscBridge:
             return
 
         dispatcher = Dispatcher()
-        # Match all clip connected paths
-        for row in range(GRID_SIZE):
+        # Match all clip connected paths (including Layer 9)
+        for row in range(NUM_ROWS):
             for col in range(GRID_SIZE):
                 path = grid_to_osc_path(row, col)
                 dispatcher.map(path, self._handle_connected)
@@ -102,7 +103,7 @@ class OscBridge:
 
     def query_all(self) -> None:
         """Ask Resolume to send the state of all clips."""
-        for row in range(GRID_SIZE):
+        for row in range(NUM_ROWS):
             for col in range(GRID_SIZE):
                 path = grid_to_osc_path(row, col)
                 self._client.send_message(path, "?")

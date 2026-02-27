@@ -5,7 +5,7 @@ import threading
 
 from .clip_state import ClipStateModel
 from .config import load_config
-from .mapping import GRID_SIZE, resolume_state_to_velocity
+from .mapping import GRID_SIZE, NUM_ROWS, resolume_state_to_velocity
 from .midi_controller import MidiController
 from .osc_bridge import OscBridge
 
@@ -115,7 +115,7 @@ class App:
         if self.midi.connected:
             snap = self.clip_state.snapshot()
             led_map = self.cfg["led"]
-            for row in range(GRID_SIZE):
+            for row in range(NUM_ROWS):
                 for col in range(GRID_SIZE):
                     state = snap[row][col]
                     if state in (3, 4):
