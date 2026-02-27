@@ -11,10 +11,12 @@ If you don't already have Python installed:
 ## Step 2: Launch the App
 
 1. Unzip the folder
-2. Double-click **`launch.command`**
-3. If macOS says "can't be opened": **right-click** the file > **Open** > click **Open** again
-4. A Terminal window opens — the first time takes ~30 seconds to install dependencies
-5. The OHM2Resolume window appears with three status dots
+2. Open **Terminal** (Spotlight search "Terminal")
+3. Type `chmod +x ` (with a space after), then drag the **`launch.command`** file into the Terminal window and press Enter
+4. Now double-click **`launch.command`**
+5. If macOS says "can't be opened": **right-click** the file > **Open** > click **Open** again
+6. A Terminal window opens — the first time takes ~30 seconds to install dependencies
+7. The OHM2Resolume window appears with three status dots
 
 ## Step 3: Set Up Resolume
 

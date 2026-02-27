@@ -1,0 +1,127 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14  # ARM64 Apple Silicon
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build .app bundle
+        run: |
+          pyinstaller \
+            --name "OHM2Resolume" \
+            --windowed \
+            --onedir \
+            --add-data "config.json:." \
+            --hidden-import "rtmidi" \
+            --hidden-import "rtmidi._rtmidi" \
+            --hidden-import "pythonosc" \
+            --hidden-import "pythonosc.osc_message_builder" \
+            --hidden-import "pythonosc.osc_bundle_builder" \
+            --hidden-import "pythonosc.udp_client" \
+            --hidden-import "pythonosc.dispatcher" \
+            --hidden-import "pythonosc.osc_server" \
+            ohm2resolume/__main__.py
+
+      - name: Ad-hoc codesign
+        run: codesign --force --deep --sign - "dist/OHM2Resolume.app"
+
+      - name: Create DMG
+        run: |
+          brew install create-dmg
+          create-dmg \
+            --volname "OHM2Resolume" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "OHM2Resolume.app" 150 190 \
+            --app-drop-link 450 190 \
+            --no-internet-enable \
+            "OHM2Resolume-Mac.dmg" \
+            "dist/OHM2Resolume.app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: OHM2Resolume-Mac.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Build exe
+        run: |
+          pyinstaller `
+            --name "OHM2Resolume" `
+            --windowed `
+            --onefile `
+            --add-data "config.json;." `
+            --hidden-import "rtmidi" `
+            --hidden-import "rtmidi._rtmidi" `
+            --hidden-import "pythonosc" `
+            --hidden-import "pythonosc.osc_message_builder" `
+            --hidden-import "pythonosc.osc_bundle_builder" `
+            --hidden-import "pythonosc.udp_client" `
+            --hidden-import "pythonosc.dispatcher" `
+            --hidden-import "pythonosc.osc_server" `
+            ohm2resolume/__main__.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/OHM2Resolume.exe
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-exe
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            OHM2Resolume-Mac.dmg
+            OHM2Resolume.exe
+          body: |
+            ## Installation
+
+            **macOS (Apple Silicon)**
+            1. Download `OHM2Resolume-Mac.dmg`
+            2. Open the DMG and drag OHM2Resolume to Applications
+            3. First launch: right-click the app > Open > Open (Gatekeeper warning — the app is not notarized)
+
+            **Windows**
+            1. Download `OHM2Resolume.exe`
+            2. Double-click to run (you may need to click "More info" > "Run anyway" in SmartScreen)
+          generate_release_notes: true
