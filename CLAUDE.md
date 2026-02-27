@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-OHM2Resolume Bridge — a standalone Python app that connects a Livid OHM RGB Slim MIDI controller's 8x8 button grid to Resolume 7+ via OSC. It reads clip state from Resolume and lights LEDs accordingly (playing clips blink), and optionally forwards button presses to trigger clips.
+OHM2Resolume Bridge — a standalone Python app that connects a Livid Ohm MIDI controller (Ohm64 or OhmRGB/Slim) to Resolume 7+ via OSC. It maps the 8x8 button grid to Resolume's clip grid, reads clip state and lights LEDs accordingly (playing clips blink), and optionally forwards button presses to trigger clips. An auto-poll timer (default 2s) periodically queries Resolume to stay in sync with structural changes like layer reordering.
 
 ## Commands
 
@@ -51,7 +51,9 @@ Windows MIDI ports are exclusive — only one app can open a port. The app acts 
 
 **Clip states**: 0=empty, 1=loaded, 2=previewed, 3=playing, 4=playing+previewed. These map to LED velocities in `config.json`. Playing clips (3/4) blink on/off; loaded/previewed stay steady.
 
-**OHM RGB Slim LED colors** are controlled by MIDI velocity ranges: 0=off, 1-3=white, 4-7=cyan, 8-15=magenta, 16-31=red, 32-63=blue, 64-126=yellow, 127=green.
+**LED velocity** meaning depends on the controller model — configured via `led` section in `config.json`:
+- **Ohm64**: Single-color (amber). Velocity controls brightness: 0=off, 1-126=varying brightness, 127=full.
+- **OhmRGB / OhmRGB Slim**: Multi-color. Velocity selects color: 0=off, 1-3=white, 4-7=cyan, 8-15=magenta, 16-31=red, 32-63=blue, 64-126=yellow, 127=green.
 
 All mapping logic lives in `mapping.py` as pure functions with no I/O.
 

@@ -11,7 +11,7 @@ DEFAULTS = {
         "send_host": "127.0.0.1",
     },
     "midi": {
-        "device_name_pattern": "Ohm64",
+        "device_name_pattern": "Ohm",
         "virtual_port_name": "OHM Bridge",
         "channel": 0,
     },
@@ -24,6 +24,7 @@ DEFAULTS = {
     "app": {
         "poll_interval_ms": 50,
         "enable_clip_trigger": True,
+        "auto_poll_interval_s": 2,
     },
 }
 

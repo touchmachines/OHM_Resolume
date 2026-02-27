@@ -42,6 +42,10 @@ class App:
         self._blink_timer: threading.Timer | None = None
         self._blink_interval = 0.2  # seconds
 
+        # Auto-poll timer to keep in sync with Resolume (e.g. layer reorder)
+        self._auto_poll_interval = self.cfg["app"].get("auto_poll_interval_s", 2)
+        self._auto_poll_timer: threading.Timer | None = None
+
     def start(self) -> None:
         """Start OSC listener and attempt MIDI connection."""
         self.osc.start()
@@ -52,9 +56,11 @@ class App:
         else:
             log.info("OHM64 not found — will retry on refresh")
         self._start_blink()
+        self._start_auto_poll()
 
     def stop(self) -> None:
         """Shut down all components."""
+        self._stop_auto_poll()
         self._stop_blink()
         if self.midi.connected:
             self.midi.all_leds_off()
@@ -83,6 +89,25 @@ class App:
         if self._blink_timer:
             self._blink_timer.cancel()
             self._blink_timer = None
+
+    def _start_auto_poll(self) -> None:
+        """Start periodic full-state query to catch structural changes in Resolume."""
+        if self._auto_poll_interval > 0:
+            self._auto_poll_tick()
+
+    def _stop_auto_poll(self) -> None:
+        if self._auto_poll_timer:
+            self._auto_poll_timer.cancel()
+            self._auto_poll_timer = None
+
+    def _auto_poll_tick(self) -> None:
+        """Query all clip states from Resolume to stay in sync."""
+        self.osc.query_all()
+        self._auto_poll_timer = threading.Timer(
+            self._auto_poll_interval, self._auto_poll_tick
+        )
+        self._auto_poll_timer.daemon = True
+        self._auto_poll_timer.start()
 
     def _blink_tick(self) -> None:
         """Toggle blink state and update LEDs for playing clips."""
