@@ -31,6 +31,8 @@ jobs:
             --add-data "config.json:." \
             --hidden-import "rtmidi" \
             --hidden-import "rtmidi._rtmidi" \
+            --hidden-import "mido.backends" \
+            --hidden-import "mido.backends.rtmidi" \
             --hidden-import "pythonosc" \
             --hidden-import "pythonosc.osc_message_builder" \
             --hidden-import "pythonosc.osc_bundle_builder" \
@@ -82,6 +84,8 @@ jobs:
             --add-data "config.json;." `
             --hidden-import "rtmidi" `
             --hidden-import "rtmidi._rtmidi" `
+            --hidden-import "mido.backends" `
+            --hidden-import "mido.backends.rtmidi" `
             --hidden-import "pythonosc" `
             --hidden-import "pythonosc.osc_message_builder" `
             --hidden-import "pythonosc.osc_bundle_builder" `
