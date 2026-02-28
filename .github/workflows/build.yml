@@ -29,6 +29,7 @@ jobs:
             --windowed \
             --onedir \
             --add-data "config.json:." \
+            --collect-submodules "mido" \
             --hidden-import "rtmidi" \
             --hidden-import "rtmidi._rtmidi" \
             --hidden-import "mido.backends" \
@@ -82,6 +83,7 @@ jobs:
             --windowed `
             --onefile `
             --add-data "config.json;." `
+            --collect-submodules "mido" `
             --hidden-import "rtmidi" `
             --hidden-import "rtmidi._rtmidi" `
             --hidden-import "mido.backends" `

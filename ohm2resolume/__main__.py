@@ -3,6 +3,10 @@
 import logging
 import sys
 
+# Force mido backend import so PyInstaller includes it in the bundle.
+# mido loads backends dynamically via importlib which PyInstaller can't detect.
+import mido.backends.rtmidi  # noqa: F401
+
 try:
     from .app import App
     from .config import load_config
