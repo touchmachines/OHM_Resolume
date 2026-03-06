@@ -102,13 +102,24 @@ class MidiController:
     def connect_virtual(self) -> bool:
         """Open virtual MIDI port for passthrough.
 
-        macOS: creates a native virtual port via CoreMIDI (no extra software needed).
-        Windows: opens an existing loopMIDI port by name.
+        All platforms: first tries to find an existing port matching
+        virtual_port_name (loopMIDI on Windows, IAC Driver on macOS).
+        macOS fallback: creates a native virtual port via CoreMIDI.
         """
         self.disconnect_virtual()
 
+        # Try to find an existing virtual port first (loopMIDI / IAC Driver)
+        vport = self.find_virtual_port()
+        if vport:
+            try:
+                self._virtual_output = mido.open_output(vport)
+                log.info("Opened virtual MIDI output: %s", vport)
+                return True
+            except Exception:
+                log.exception("Failed to open virtual MIDI output: %s", vport)
+
         if sys.platform == "darwin":
-            # macOS — create a virtual port natively
+            # macOS fallback — create a virtual port natively via CoreMIDI
             try:
                 self._virtual_output = mido.open_output(
                     self.virtual_port_name, virtual=True,
@@ -119,22 +130,12 @@ class MidiController:
                 log.exception("Failed to create virtual MIDI port: %s", self.virtual_port_name)
                 return False
         else:
-            # Windows — find an existing loopMIDI port
-            vport = self.find_virtual_port()
-            if not vport:
-                log.warning(
-                    "Virtual MIDI port '%s' not found — "
-                    "install loopMIDI and create a port named '%s'",
-                    self.virtual_port_name, self.virtual_port_name,
-                )
-                return False
-            try:
-                self._virtual_output = mido.open_output(vport)
-                log.info("Opened virtual MIDI output: %s", vport)
-                return True
-            except Exception:
-                log.exception("Failed to open virtual MIDI output: %s", vport)
-                return False
+            log.warning(
+                "Virtual MIDI port '%s' not found — "
+                "install loopMIDI and create a port named '%s'",
+                self.virtual_port_name, self.virtual_port_name,
+            )
+            return False
 
     def disconnect(self) -> None:
         """Close all MIDI ports."""
