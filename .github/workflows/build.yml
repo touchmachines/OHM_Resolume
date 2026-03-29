@@ -106,13 +106,13 @@ jobs:
             --icon "OHM2Resolume.app" 150 190 \
             --app-drop-link 450 190 \
             --no-internet-enable \
-            "OHM2Resolume-Mac.dmg" \
+            "OHM2Resolume.dmg" \
             "dist/OHM2Resolume.app"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
-          path: OHM2Resolume-Mac.dmg
+          name: OHM2Resolume-macOS
+          path: OHM2Resolume.dmg
 
   build-windows:
     runs-on: windows-latest
@@ -148,7 +148,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-exe
+          name: OHM2Resolume-Windows
           path: dist/OHM2Resolume.exe
 
   release:
@@ -158,22 +158,22 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: macos-dmg
+          name: OHM2Resolume-macOS
 
       - uses: actions/download-artifact@v4
         with:
-          name: windows-exe
+          name: OHM2Resolume-Windows
 
       - uses: softprops/action-gh-release@v2
         with:
           files: |
-            OHM2Resolume-Mac.dmg
+            OHM2Resolume.dmg
             OHM2Resolume.exe
           body: |
             ## Installation
 
             **macOS (Apple Silicon)**
-            1. Download `OHM2Resolume-Mac.dmg`
+            1. Download `OHM2Resolume.dmg`
             2. Open the DMG and drag OHM2Resolume to Applications
             3. The app is signed and notarized — it should open without Gatekeeper warnings
 
