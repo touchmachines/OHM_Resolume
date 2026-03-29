@@ -1,10 +1,12 @@
 name: Build & Release
 
 on:
-  push:
-    branches: [main]
-    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      create_release:
+        description: "Create a GitHub release (requires a v* tag)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -42,8 +44,56 @@ jobs:
             --hidden-import "pythonosc.osc_server" \
             ohm2resolume/__main__.py
 
-      - name: Ad-hoc codesign
-        run: codesign --force --deep --sign - "dist/OHM2Resolume.app"
+      - name: Install signing certificate
+        env:
+          P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: |
+          CERT_PATH=$RUNNER_TEMP/certificate.p12
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          echo -n "$P12_BASE64" | base64 --decode -o $CERT_PATH
+          security create-keychain -p "" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "" $KEYCHAIN_PATH
+          security import $CERT_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "SIGNING_IDENTITY=$IDENTITY" >> $GITHUB_ENV
+
+      - name: Sign app bundle
+        run: codesign --force --options runtime --deep --sign "$SIGNING_IDENTITY" "dist/OHM2Resolume.app"
+
+      - name: Notarize and staple
+        env:
+          API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          mkdir -p ~/private_keys
+          echo -n "$API_KEY_BASE64" | base64 --decode > ~/private_keys/AuthKey_${API_KEY_ID}.p8
+          KEY_ARGS="--key ~/private_keys/AuthKey_${API_KEY_ID}.p8 --key-id $API_KEY_ID --issuer $API_ISSUER_ID"
+
+          ditto -c -k --keepParent "dist/OHM2Resolume.app" $RUNNER_TEMP/OHM2Resolume.zip
+          xcrun notarytool submit $RUNNER_TEMP/OHM2Resolume.zip $KEY_ARGS --wait 2>&1 | tee $RUNNER_TEMP/notarize.log
+
+          SUBMISSION_ID=$(grep 'id:' $RUNNER_TEMP/notarize.log | head -1 | awk '{print $2}')
+          if grep -q "Invalid" $RUNNER_TEMP/notarize.log; then
+            echo "=== Notarization failed — fetching log ==="
+            xcrun notarytool log "$SUBMISSION_ID" $KEY_ARGS || true
+            exit 1
+          fi
+
+          xcrun stapler staple "dist/OHM2Resolume.app"
+
+      - name: Verify signing
+        run: |
+          echo "=== Architecture ==="
+          lipo -info "dist/OHM2Resolume.app/Contents/MacOS/OHM2Resolume" || true
+          echo "=== Code signing ==="
+          codesign -dvvv "dist/OHM2Resolume.app" 2>&1 || true
+          echo "=== Notarization ==="
+          spctl -a -vvv -t execute "dist/OHM2Resolume.app" 2>&1 || true
 
       - name: Create DMG
         run: |
@@ -102,7 +152,7 @@ jobs:
           path: dist/OHM2Resolume.exe
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: inputs.create_release && startsWith(github.ref, 'refs/tags/v')
     needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
@@ -125,7 +175,7 @@ jobs:
             **macOS (Apple Silicon)**
             1. Download `OHM2Resolume-Mac.dmg`
             2. Open the DMG and drag OHM2Resolume to Applications
-            3. First launch: right-click the app > Open > Open (Gatekeeper warning — the app is not notarized)
+            3. The app is signed and notarized — it should open without Gatekeeper warnings
 
             **Windows**
             1. Download `OHM2Resolume.exe`
