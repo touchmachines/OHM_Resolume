@@ -56,9 +56,13 @@ class MidiController:
         return None
 
     def find_device(self) -> str | None:
-        """Find the first MIDI port matching the OHM64 name pattern."""
+        """Find the first MIDI port matching the OHM64 name pattern.
+
+        Excludes the virtual port name to avoid matching IAC Driver / loopMIDI ports.
+        """
+        virtual_lower = self.virtual_port_name.lower()
         for name in mido.get_output_names():
-            if self._pattern.search(name):
+            if self._pattern.search(name) and virtual_lower not in name.lower():
                 return name
         return None
 
@@ -84,9 +88,10 @@ class MidiController:
             log.exception("Failed to open MIDI output: %s", port_name)
             return False
 
-        # Find matching input port
+        # Find matching input port (exclude virtual port)
+        virtual_lower = self.virtual_port_name.lower()
         for name in mido.get_input_names():
-            if self._pattern.search(name):
+            if self._pattern.search(name) and virtual_lower not in name.lower():
                 try:
                     self._input = mido.open_input(name, callback=self._on_message)
                     log.info("Opened MIDI input: %s", name)
