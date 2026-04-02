@@ -8,5 +8,24 @@ build/
 .eggs/
 venv/
 .venv/
+
+# Secrets
 .env
+.env.*
+*.pem
+*.key
+credentials.json
+secrets/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Build artifacts
 *.dmg
+*.exe
