@@ -16,6 +16,12 @@ STATE_COLORS = {
     4: "#00cc44",   # playing + previewed — bright green
 }
 
+DISABLED_BG = "#1a1a1a"
+DISABLED_BORDER = "#882222"
+EDIT_BORDER = "#cccc33"
+DEFAULT_BORDER = "#444444"
+X_COLOR = "#cc4444"
+
 
 class Gui:
     """Tkinter-based status dashboard."""
@@ -27,9 +33,18 @@ class Gui:
         self.root.resizable(False, False)
         self.root.configure(bg="#222222")
 
+        self._edit_mode = False
+        self._x_lines: dict[tuple[int, int], list[int]] = {}
+        self._cell_size = 40
+
         self._build_status_bar()
         self._build_grid()
         self._build_controls()
+
+        # Render any pre-disabled pads from config
+        for row in range(NUM_ROWS):
+            for col in range(GRID_SIZE):
+                self._redraw_cell(row, col)
 
         self._poll_interval = app.cfg["app"]["poll_interval_ms"]
         self._schedule_poll()
@@ -72,7 +87,7 @@ class Gui:
         outer = tk.Frame(self.root, bg="#222222")
         outer.pack(padx=10, pady=10)
 
-        cell_size = 40
+        cell_size = self._cell_size
         self._cells: list[list[tk.Canvas]] = []
 
         # --- Left Layer 9 group (4 buttons) ---
@@ -105,10 +120,11 @@ class Gui:
                     width=cell_size,
                     height=cell_size,
                     bg=STATE_COLORS[0],
-                    highlightbackground="#444444",
+                    highlightbackground=DEFAULT_BORDER,
                     highlightthickness=1,
                 )
                 c.grid(row=row, column=col + 1, padx=1, pady=1)
+                c.bind("<Button-1>", lambda _e, r=row, cc=col: self._on_cell_click(r, cc))
                 row_cells.append(c)
             self._cells.append(row_cells)
 
@@ -132,10 +148,11 @@ class Gui:
                 width=cell_size,
                 height=cell_size,
                 bg=STATE_COLORS[0],
-                highlightbackground="#444444",
+                highlightbackground=DEFAULT_BORDER,
                 highlightthickness=1,
             )
             c.grid(row=0, column=grid_col, padx=1, pady=1)
+            c.bind("<Button-1>", lambda _e, cc=col: self._on_cell_click(8, cc))
             layer9_cells.append(c)
         self._cells.append(layer9_cells)
 
@@ -164,6 +181,9 @@ class Gui:
 
         tk.Button(bar, text="?", command=self._on_setup_help, width=2, **btn_style).pack(side=tk.RIGHT)
 
+        self._edit_btn = tk.Button(bar, text="Edit Pads", command=self._on_edit_toggle, **btn_style)
+        self._edit_btn.pack(side=tk.RIGHT, padx=(0, 8))
+
     # --- Actions ---------------------------------------------------------
 
     def _on_refresh(self) -> None:
@@ -171,6 +191,24 @@ class Gui:
 
     def _on_trigger_toggle(self) -> None:
         self.app.enable_clip_trigger = self._trigger_var.get()
+
+    def _on_edit_toggle(self) -> None:
+        self._edit_mode = not self._edit_mode
+        self._edit_btn.configure(
+            text="Done" if self._edit_mode else "Edit Pads",
+            bg="#aa7722" if self._edit_mode else "#444444",
+        )
+        # Highlight all cells to invite clicking while in edit mode
+        for row in range(NUM_ROWS):
+            for col in range(GRID_SIZE):
+                self._redraw_cell(row, col)
+
+    def _on_cell_click(self, row: int, col: int) -> None:
+        if not self._edit_mode:
+            return
+        new_state = not self.app.is_disabled(row, col)
+        self.app.set_disabled(row, col, new_state)
+        self._redraw_cell(row, col)
 
     def _on_setup_help(self) -> None:
         """Show a Getting Started dialog."""
@@ -234,12 +272,10 @@ class Gui:
     def _poll(self) -> None:
         # Update grid colors
         if self.app.clip_state.is_dirty():
-            snap = self.app.clip_state.snapshot()
             self.app.clip_state.clear_dirty()
             for row in range(NUM_ROWS):
                 for col in range(GRID_SIZE):
-                    color = STATE_COLORS.get(snap[row][col], STATE_COLORS[0])
-                    self._cells[row][col].configure(bg=color)
+                    self._redraw_cell(row, col)
 
         # Update MIDI status
         if self.app.midi.connected:
@@ -268,6 +304,33 @@ class Gui:
         else:
             self._osc_dot.itemconfig(self._osc_oval, fill="#cc3333")
             self._osc_label.configure(text=f"Listening on port {self.app.osc.listen_port}")
+
+    def _redraw_cell(self, row: int, col: int) -> None:
+        """Apply current clip state + disabled overlay + edit-mode border."""
+        cell = self._cells[row][col]
+        disabled = self.app.is_disabled(row, col)
+
+        if disabled:
+            bg = DISABLED_BG
+            border = DISABLED_BORDER
+        else:
+            state = self.app.clip_state.get(row, col)
+            bg = STATE_COLORS.get(state, STATE_COLORS[0])
+            border = EDIT_BORDER if self._edit_mode else DEFAULT_BORDER
+
+        cell.configure(bg=bg, highlightbackground=border)
+
+        # Manage the X overlay
+        prev_lines = self._x_lines.pop((row, col), None)
+        if prev_lines:
+            for item in prev_lines:
+                cell.delete(item)
+        if disabled:
+            s = self._cell_size
+            pad = 6
+            line_a = cell.create_line(pad, pad, s - pad, s - pad, fill=X_COLOR, width=3)
+            line_b = cell.create_line(pad, s - pad, s - pad, pad, fill=X_COLOR, width=3)
+            self._x_lines[(row, col)] = [line_a, line_b]
 
     # --- Run -------------------------------------------------------------
 

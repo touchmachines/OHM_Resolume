@@ -26,6 +26,7 @@ DEFAULTS = {
         "enable_clip_trigger": True,
         "auto_poll_interval_s": 2,
     },
+    "disabled_buttons": [],
 }
 
 

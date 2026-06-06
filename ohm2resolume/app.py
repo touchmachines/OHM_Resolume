@@ -4,7 +4,7 @@ import logging
 import threading
 
 from .clip_state import ClipStateModel
-from .config import load_config
+from .config import load_config, save_config
 from .mapping import GRID_SIZE, NUM_ROWS, resolume_state_to_velocity
 from .midi_controller import MidiController
 from .osc_bridge import OscBridge
@@ -19,12 +19,19 @@ class App:
         self.cfg = cfg or load_config()
         self.clip_state = ClipStateModel()
 
+        # Disabled pads — forwarded to virtual port, no OSC, no LED.
+        self.disabled_buttons: set[tuple[int, int]] = {
+            tuple(b) for b in self.cfg.get("disabled_buttons", [])
+            if isinstance(b, (list, tuple)) and len(b) == 2
+        }
+
         self.midi = MidiController(
             device_name_pattern=self.cfg["midi"]["device_name_pattern"],
             virtual_port_name=self.cfg["midi"]["virtual_port_name"],
             channel=self.cfg["midi"]["channel"],
             on_button_press=self._on_button_press,
             on_button_release=self._on_button_release,
+            is_disabled=self.is_disabled,
         )
 
         self.osc = OscBridge(
@@ -118,6 +125,8 @@ class App:
             led_map = self.cfg["led"]
             for row in range(NUM_ROWS):
                 for col in range(GRID_SIZE):
+                    if self.is_disabled(row, col):
+                        continue
                     state = snap[row][col]
                     if state in (3, 4):
                         # Playing: blink between full and off
@@ -134,6 +143,8 @@ class App:
 
     def _on_led_update(self, row: int, col: int, velocity: int) -> None:
         """Called by OscBridge when a clip state changes."""
+        if self.is_disabled(row, col):
+            return
         # Non-playing states get immediate LED update; playing states are handled by blink
         state = self.clip_state.get(row, col)
         if state not in (3, 4):
@@ -152,3 +163,37 @@ class App:
         """
         if self.enable_clip_trigger:
             self.osc.disconnect_clip(row, col)
+
+    def is_disabled(self, row: int, col: int) -> bool:
+        return (row, col) in self.disabled_buttons
+
+    def set_disabled(self, row: int, col: int, disabled: bool) -> None:
+        """Toggle a pad's disabled state and persist to config.json.
+
+        Disabled pads forward MIDI to the virtual port (for Resolume MIDI
+        mapping) and do not receive LED updates from clip state.
+        """
+        key = (row, col)
+        if disabled:
+            if key in self.disabled_buttons:
+                return
+            self.disabled_buttons.add(key)
+            # Turn the physical LED off immediately
+            if self.midi.connected:
+                self.midi.set_led(row, col, 0)
+        else:
+            if key not in self.disabled_buttons:
+                return
+            self.disabled_buttons.discard(key)
+            # Restore LED from current clip state
+            if self.midi.connected:
+                state = self.clip_state.get(row, col)
+                vel = resolume_state_to_velocity(state, self.cfg["led"])
+                self.midi.set_led(row, col, vel)
+
+        # Persist as sorted list-of-lists for deterministic JSON
+        self.cfg["disabled_buttons"] = [list(b) for b in sorted(self.disabled_buttons)]
+        try:
+            save_config(self.cfg)
+        except Exception:
+            log.exception("Failed to save disabled_buttons to config")

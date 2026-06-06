@@ -25,12 +25,14 @@ class MidiController:
         channel: int = 0,
         on_button_press: Callable[[int, int], None] | None = None,
         on_button_release: Callable[[int, int], None] | None = None,
+        is_disabled: Callable[[int, int], bool] | None = None,
     ):
         self.device_name_pattern = device_name_pattern
         self.virtual_port_name = virtual_port_name
         self.channel = channel
         self.on_button_press = on_button_press
         self.on_button_release = on_button_release
+        self.is_disabled = is_disabled
 
         self._input: mido.ports.BaseInput | None = None
         self._output: mido.ports.BaseOutput | None = None
@@ -211,6 +213,10 @@ class MidiController:
             # Grid button — handle internally, don't forward
             row, col = note_to_grid(msg.note)
             if not (0 <= row < NUM_ROWS and 0 <= col < GRID_SIZE):
+                return
+            # Disabled pads are forwarded so Resolume can MIDI-map them
+            if self.is_disabled and self.is_disabled(row, col):
+                self._forward_to_virtual(msg)
                 return
             # note_on with velocity 0 is a release (MIDI running-status convention)
             is_press = msg.type == "note_on" and msg.velocity > 0
