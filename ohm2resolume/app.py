@@ -24,6 +24,7 @@ class App:
             virtual_port_name=self.cfg["midi"]["virtual_port_name"],
             channel=self.cfg["midi"]["channel"],
             on_button_press=self._on_button_press,
+            on_button_release=self._on_button_release,
         )
 
         self.osc = OscBridge(
@@ -141,5 +142,13 @@ class App:
     def _on_button_press(self, row: int, col: int) -> None:
         """Called by MidiController when a button is pressed on the OHM64."""
         if self.enable_clip_trigger:
-            self.osc.trigger_clip(row, col)
-            log.info("Button press -> trigger layer=%d clip=%d", row + 1, col + 1)
+            self.osc.connect_clip(row, col)
+
+    def _on_button_release(self, row: int, col: int) -> None:
+        """Called by MidiController when a grid button is released.
+
+        Sending connect=0 unconditionally — Resolume only acts on it for clips
+        set to Piano trigger style, so Trigger/Toggle clips are unaffected.
+        """
+        if self.enable_clip_trigger:
+            self.osc.disconnect_clip(row, col)

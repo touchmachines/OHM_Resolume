@@ -94,12 +94,26 @@ class OscBridge:
 
         log.debug("OSC %s -> grid(%d,%d) state=%d vel=%d", address, row, col, state, velocity)
 
-    def trigger_clip(self, row: int, col: int) -> None:
-        """Send OSC to trigger a clip in Resolume (connect then disconnect)."""
+    def connect_clip(self, row: int, col: int) -> None:
+        """Send OSC connect=1 to Resolume (clip press).
+
+        In Trigger/Toggle styles this acts as the trigger; in Piano style it
+        starts the clip which will keep playing until disconnect_clip is sent.
+        """
         path = grid_to_trigger_path(row, col)
         self._client.send_message(path, 1)
+        log.info("Clip press layer=%d clip=%d", row + 1, col + 1)
+
+    def disconnect_clip(self, row: int, col: int) -> None:
+        """Send OSC connect=0 to Resolume (clip release).
+
+        Only meaningful in Piano style — Trigger/Toggle styles ignore connect=0.
+        Sent unconditionally so behavior matches the clip's per-style setting
+        without the bridge needing to know it.
+        """
+        path = grid_to_trigger_path(row, col)
         self._client.send_message(path, 0)
-        log.info("Triggered clip layer=%d clip=%d", row + 1, col + 1)
+        log.info("Clip release layer=%d clip=%d", row + 1, col + 1)
 
     def query_all(self) -> None:
         """Ask Resolume to send the state of all clips."""

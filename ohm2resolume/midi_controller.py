@@ -24,11 +24,13 @@ class MidiController:
         virtual_port_name: str = "OHM Bridge",
         channel: int = 0,
         on_button_press: Callable[[int, int], None] | None = None,
+        on_button_release: Callable[[int, int], None] | None = None,
     ):
         self.device_name_pattern = device_name_pattern
         self.virtual_port_name = virtual_port_name
         self.channel = channel
         self.on_button_press = on_button_press
+        self.on_button_release = on_button_release
 
         self._input: mido.ports.BaseInput | None = None
         self._output: mido.ports.BaseOutput | None = None
@@ -207,12 +209,20 @@ class MidiController:
         """
         if self._is_grid_note(msg):
             # Grid button — handle internally, don't forward
-            if msg.type == "note_on" and msg.velocity > 0:
-                row, col = note_to_grid(msg.note)
-                if 0 <= row < NUM_ROWS and 0 <= col < GRID_SIZE:
-                    log.debug("Button press: row=%d col=%d note=%d", row, col, msg.note)
-                    if self.on_button_press:
-                        self.on_button_press(row, col)
+            row, col = note_to_grid(msg.note)
+            if not (0 <= row < NUM_ROWS and 0 <= col < GRID_SIZE):
+                return
+            # note_on with velocity 0 is a release (MIDI running-status convention)
+            is_press = msg.type == "note_on" and msg.velocity > 0
+            is_release = msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0)
+            if is_press:
+                log.debug("Button press: row=%d col=%d note=%d", row, col, msg.note)
+                if self.on_button_press:
+                    self.on_button_press(row, col)
+            elif is_release:
+                log.debug("Button release: row=%d col=%d note=%d", row, col, msg.note)
+                if self.on_button_release:
+                    self.on_button_release(row, col)
         else:
             # Faders, knobs, CCs, non-grid notes — pass through
             self._forward_to_virtual(msg)
